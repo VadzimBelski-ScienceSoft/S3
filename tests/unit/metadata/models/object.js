@@ -1,11 +1,13 @@
 import assert from 'assert';
-import ObjectMD from '../../../../lib/metadata/models/object/object';
+const ObjectModelMD =
+    require('../../../../lib/metadata/models/object/ObjectModelMD')
+    .ObjectModelMD;
 
 describe('ObjectMD class setters/getters', () => {
     let md = null;
 
     beforeEach(() => {
-        md = new ObjectMD();
+        md = new ObjectModelMD();
     });
 
     [
