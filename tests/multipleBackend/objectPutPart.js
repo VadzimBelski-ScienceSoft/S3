@@ -2,6 +2,7 @@ const assert = require('assert');
 const async = require('async');
 const crypto = require('crypto');
 const { parseString } = require('xml2js');
+const AWS = require('aws-sdk');
 
 const { cleanup, DummyRequestLogger, makeAuthInfo }
     = require('../unit/helpers');
@@ -13,6 +14,8 @@ const objectPutPart = require('../../lib/api/objectPutPart');
 const DummyRequest = require('../unit/DummyRequest');
 const { metadata } = require('../../lib/metadata/in_memory/metadata');
 const constants = require('../../constants');
+
+const s3 = new AWS.S3();
 
 const splitter = constants.splitter;
 const log = new DummyRequestLogger();
@@ -108,22 +111,24 @@ errorDescription) {
         const partReq = new DummyRequest(partReqParams, body);
         return objectPutPart(authInfo, partReq, undefined, log, err => {
             assert.strictEqual(err, null);
-            const keysInMPUkeyMap = [];
-            metadata.keyMaps.get(mpuBucket).forEach((val, key) => {
-                keysInMPUkeyMap.push(key);
-            });
-            const sortedKeyMap = keysInMPUkeyMap.sort(a => {
-                if (a.slice(0, 8) === 'overview') {
-                    return -1;
-                }
-                return 0;
-            });
-            const partKey = sortedKeyMap[1];
-            const partETag = metadata.keyMaps.get(mpuBucket)
-                                                .get(partKey)['content-md5'];
-            assert.strictEqual(keysInMPUkeyMap.length, 2);
-            assert.strictEqual(partETag, calculatedHash);
-            cb();
+            if (bucketLoc !== 'aws-test' && mpuLoc !== 'aws-test') {
+                const keysInMPUkeyMap = [];
+                metadata.keyMaps.get(mpuBucket).forEach((val, key) => {
+                    keysInMPUkeyMap.push(key);
+                });
+                const sortedKeyMap = keysInMPUkeyMap.sort(a => {
+                    if (a.slice(0, 8) === 'overview') {
+                        return -1;
+                    }
+                    return 0;
+                });
+                const partKey = sortedKeyMap[1];
+                const partETag = metadata.keyMaps.get(mpuBucket)
+                                .get(partKey)['content-md5'];
+                assert.strictEqual(keysInMPUkeyMap.length, 2);
+                assert.strictEqual(partETag, calculatedHash);
+            }
+            cb(testUploadId);
         });
     });
 }
@@ -156,6 +161,23 @@ describeSkipIfE2E('objectPutPart API with multiple backends', () => {
         });
     });
 
+    it('should put a part to AWS based on mpu location', done => {
+        putPart('file', 'aws-test', null, 'localhost', uploadId => {
+            assert.deepStrictEqual(ds, []);
+            const params = { Bucket: 'multitester444', Key: objectName,
+            UploadId: uploadId };
+            s3.listParts(params, (err, data) => {
+                assert.equal(err, null, `Error listing parts: ${err}`);
+                assert.strictEqual(data.Parts.length, 1);
+                s3.abortMultipartUpload(params, err => {
+                    assert.equal(err, null, `Error aborting MPU: ${err}. ` +
+                    `You must abort MPU with upload ID ${uploadId} manually.`);
+                    done();
+                });
+            });
+        });
+    });
+
     it('should upload part based on mpu location even if part ' +
         'location constraint is specified ', done => {
         putPart('file', 'mem', 'file', 'localhost', () => {
@@ -175,6 +197,24 @@ describeSkipIfE2E('objectPutPart API with multiple backends', () => {
         putPart('mem', null, null, 'localhost', () => {
             assert.deepStrictEqual(ds[1].value, body);
             done();
+        });
+    });
+
+    it('should put a part to AWS based on bucket location', done => {
+        putPart('aws-test', null, null, 'localhost',
+        uploadId => {
+            assert.deepStrictEqual(ds, []);
+            const params = { Bucket: 'multitester444', Key: objectName,
+            UploadId: uploadId };
+            s3.listParts(params, (err, data) => {
+                assert.equal(err, null, `Error listing parts: ${err}`);
+                assert.strictEqual(data.Parts.length, 1);
+                s3.abortMultipartUpload(params, err => {
+                    assert.equal(err, null, `Error aborting MPU: ${err}. ` +
+                    `You must abort MPU with upload ID ${uploadId} manually.`);
+                    done();
+                });
+            });
         });
     });
 
