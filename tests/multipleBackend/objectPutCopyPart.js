@@ -1,6 +1,7 @@
 const assert = require('assert');
 const async = require('async');
 const { parseString } = require('xml2js');
+const AWS = require('aws-sdk');
 
 const { cleanup, DummyRequestLogger, makeAuthInfo }
     = require('../unit/helpers');
@@ -13,6 +14,8 @@ const objectPutCopyPart = require('../../lib/api/objectPutCopyPart');
 const DummyRequest = require('../unit/DummyRequest');
 const { metadata } = require('../../lib/metadata/in_memory/metadata');
 const constants = require('../../constants');
+
+const s3 = new AWS.S3();
 
 const splitter = constants.splitter;
 const log = new DummyRequestLogger();
@@ -124,7 +127,7 @@ errorDescription) {
         return objectPutCopyPart(authInfo, copyPartReq,
             bucketName, sourceObjName, undefined, log, err => {
                 assert.strictEqual(err, null);
-                cb();
+                cb(testUploadId);
             });
     });
 }
@@ -158,6 +161,18 @@ describeSkipIfE2E('ObjectCopyPutPart API with multiple backends', () => {
         });
     });
 
+    it('should copy part to AWS based on mpu location', done => {
+        copyPutPart('mem', 'aws-test', null, 'localhost', uploadId => {
+            assert.strictEqual(ds.length, 2);
+            s3.abortMultipartUpload({ Bucket: 'multitester444',
+            Key: destObjName, UploadId: uploadId }, err => {
+                assert.equal(err, null, `Error aborting MPU: ${err}. ` +
+                `You must abort MPU with upload ID ${uploadId} manually.`);
+                done();
+            });
+        });
+    });
+
     it('should copy part to mem based on bucket location', done => {
         copyPutPart('mem', null, null, 'localhost', () => {
             // ds length should be three because both source
@@ -174,6 +189,18 @@ describeSkipIfE2E('ObjectCopyPutPart API with multiple backends', () => {
             // coped objects should be in file
             assert.deepStrictEqual(ds, []);
             done();
+        });
+    });
+
+    it('should copy part to AWS based on bucket location', done => {
+        copyPutPart('aws-test', null, null, 'localhost', uploadId => {
+            assert.deepStrictEqual(ds, []);
+            s3.abortMultipartUpload({ Bucket: 'multitester444',
+            Key: destObjName, UploadId: uploadId }, err => {
+                assert.equal(err, null, `Error aborting MPU: ${err}. ` +
+                `You must abort MPU with upload ID ${uploadId} manually.`);
+                done();
+            });
         });
     });
 
