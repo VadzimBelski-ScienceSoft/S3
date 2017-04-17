@@ -83,7 +83,6 @@ export default {
         'metrics': true,
         'notification': true,
         'policy': true,
-        'replication': true,
         'requestPayment': true,
         'restore': true,
         'torrent': true,
