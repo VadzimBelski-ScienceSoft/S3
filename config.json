@@ -22,9 +22,6 @@
                         "s3-website-sa-east-1.amazonaws.com",
                         "s3-website.localhost",
                         "s3-website.scality.test"],
-    "sproxyd": {
-        "bootstrap": ["localhost:8181"]
-    },
     "cdmi": {
         "host": "localhost",
         "port": 81,
