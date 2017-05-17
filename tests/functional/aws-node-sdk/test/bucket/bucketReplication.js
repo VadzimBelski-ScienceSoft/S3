@@ -105,7 +105,7 @@ describe('aws-node-sdk test putBucketReplication bucket status', () => {
             'versioning', done =>
             checkVersioningError('Suspended', 'InvalidRequest', done));
 
-        it('should put configuration on a bucket with versioning', done =>
+        it.only('should put configuration on a bucket with versioning', done =>
             checkVersioningError('Enabled', null, done));
     });
 });
