@@ -2,7 +2,7 @@ import assert from 'assert';
 
 import withV4 from '../support/withV4';
 import BucketUtility from '../../lib/utility/bucket-util';
-import { metadata } from '../../../../../lib/metadata/bucketfile/backend';
+import { metadata } from '../../../../../lib/metadata/in_memory/metadata';
 import { removeAllVersions, versioningEnabled } from
     '../../lib/utility/versioning-util.js';
 
