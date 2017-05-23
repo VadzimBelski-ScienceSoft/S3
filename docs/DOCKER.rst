@@ -1,19 +1,40 @@
 Docker
 ========================================================================
 
-Using S3 for continuous integration testing or in production with Docker
+Getting Started
+---------------
 
--  `For continuous integration with
-   Docker <#for-continuous-integration-with-docker>`__
--  `Environment Variables <#environment-variables>`__
--  `In production with Docker <#in-production-with-docker>`__
--  `Using Docker Volume in
-   production <#using-docker-volume-in-production>`__
--  `Adding modifying or deleting accounts or users
-   credentials <#adding-modifying-or-deleting-accounts-or-users-credentials>`__
--  `Specifying your own host name <#specifying-your-own-host-name>`__
--  `Running as an unprivileged
-   user <#running-as-an-unprivileged-user>`__
+The default access key is *accessKey1*, with the secret key *verySecretKey1*
+
+Run s3 server with a file backend on port 8000:
+
+.. code:: shell
+
+    docker run -d --name s3server -p 8000:8000 scality/s3server
+
+Run s3 server with an in-memory backend on port 8000:
+
+.. code:: shell
+
+    docker run -d --name s3server -p 8000:8000 scality/s3server:mem-latest
+
+Note that the ``--name`` selected (in the example 's3server') will enable you to
+easily start and stop the given named container:
+
+.. code:: shell
+
+    docker stop s3server
+    docker start s3server
+
+Data storage
+^^^^^^^^^^^^^
+
+When using s3server with a **file backend**, all data is stored inside the container
+and is persisted between restarts. You can define the path for data and
+metadata storage, check our documentation on configuring storage path.
+When using s3sever with an **in-memory backend**, all data is lost after you
+stop the container.
+
 
 For continuous integration with Docker
 --------------------------------------
