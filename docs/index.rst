@@ -8,6 +8,7 @@ Scality S3 Server
    :caption: Documentation
 
    GETTING_STARTED
+   EXAMPLES
    DOCKER
    DUPLICITY
    SSL
