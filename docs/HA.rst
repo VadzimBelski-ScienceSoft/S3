@@ -1,7 +1,7 @@
 High Availability
 =====================================
 
-`**Docker swarm** <https://docs.docker.com/engine/swarm/>`__ is a
+`Docker swarm <https://docs.docker.com/engine/swarm/>`__ is a
 clustering tool developped by Docker and ready to use with its
 containers. It allows to start a service, which we define and use as a
 means to ensure s3server's continuous availability to the end user.
@@ -29,8 +29,8 @@ On All Machines
 On Ubuntu 14.04
 ^^^^^^^^^^^^^^^
 
-The docker website has `**solid
-documentation** <https://docs.docker.com/engine/installation/linux/ubuntu/>`__.
+The docker website has `solid
+documentation <https://docs.docker.com/engine/installation/linux/ubuntu/>`__.
 We have chosen to install the aufs dependency, as recommended by Docker.
 Here are the required commands:
 
@@ -47,8 +47,8 @@ Here are the required commands:
 On CentOS 7
 ^^^^^^^^^^^
 
-The docker website has `**solid
-documentation** <https://docs.docker.com/engine/installation/linux/centos/>`__.
+The docker website has `solid
+documentation <https://docs.docker.com/engine/installation/linux/centos/>`__.
 Here are the required commands:
 
 .. code:: sh
@@ -132,8 +132,8 @@ required services:
 On Ubuntu 14.04 and CentOS 7
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-Choose where your shared data and metadata from your local `**S3
-Server** <http://www.scality.com/scality-s3-server/>`__ will be stored.
+Choose where your shared data and metadata from your local `S3
+Server <http://www.scality.com/scality-s3-server/>`__ will be stored.
 We chose to go with /var/nfs/data and /var/nfs/metadata. You also need
 to set proper sharing permissions for these folders as they'll be shared
 over NFS:
@@ -319,5 +319,5 @@ Off you go!
 
 Let us know what you use this functionality for, and if you'd like any
 specific developments around it. Or, even better: come and contribute to
-our `**Github repository** <https://github.com/scality/s3/>`__! We look
+our `Github repository <https://github.com/scality/s3/>`__! We look
 forward to meeting you!

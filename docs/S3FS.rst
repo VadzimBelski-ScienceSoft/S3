@@ -2,7 +2,7 @@ S3FS
 ====
 Export your buckets as a filesystem with s3fs on top of s3server
 
-`**s3fs** <https://github.com/s3fs-fuse/s3fs-fuse>`__ is an open source
+`s3fs <https://github.com/s3fs-fuse/s3fs-fuse>`__ is an open source
 tool that allows you to mount an S3 bucket on a filesystem-like backend.
 It is available both on Debian and RedHat distributions. For this
 tutorial, we used an Ubuntu 14.04 host to deploy and use s3fs over
