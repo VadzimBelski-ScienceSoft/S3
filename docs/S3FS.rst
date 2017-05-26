@@ -12,7 +12,7 @@ Deploying S3 Server with SSL
 ----------------------------
 
 First, you need to deploy **S3 Server**. This can be done very easily
-via `our **DockerHub**
+via `our DockerHub
 page <https://hub.docker.com/r/scality/s3server/>`__ (you want to run it
 with a file backend).
 
