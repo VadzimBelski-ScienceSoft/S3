@@ -5,10 +5,13 @@ const withV4 = require('../support/withV4');
 const BucketUtility = require('../../lib/utility/bucket-util');
 
 const {
+    createDualNullVersion,
+    suspendVersioning,
     removeAllVersions,
     versioningEnabled,
     versioningSuspended,
     checkOneVersion,
+    enableVersioningThenPutObject,
 } = require('../../lib/utility/versioning-util.js');
 
 const counter = 100;
@@ -47,6 +50,17 @@ class _Utils {
                 return next(null, dataObj);
             },
         ], callback);
+    }
+
+    assertOneNullVersion(callback) {
+        return this.s3.listObjectVersions({ Bucket: bucket },
+            (err, data) => {
+                assert.strictEqual(err, null);
+                assert.strictEqual(data.Versions.length, 1);
+                assert.strictEqual(data.Versions[0].VersionId,
+                    'null');
+                callback();
+            });
     }
 
     getObjectAcl(params, callback) {
@@ -333,6 +347,84 @@ describe('versioned put and get object acl ::', () => {
                     checkOneVersion(data, versionId);
                     done();
                 }));
+            });
+        });
+
+        describe('on version-suspended bucket with non-versioned object :: ',
+        () => {
+            beforeEach(done => {
+                suspendVersioning(bucket, done);
+            });
+
+            function _assertNullVersionAcl(expectedLength, cb) {
+                return s3.getObjectAcl({
+                    Bucket: bucket,
+                    Key: key,
+                    VersionId: 'null',
+                }, (err, data) => {
+                    _Utils.assertNoError(err,
+                        'getting acl of null version');
+                    assert.strictEqual(data.Grants.length, expectedLength);
+                    cb();
+                });
+            }
+
+            it('version-specific put acl when master is null version ' +
+            'should not create a new null version', done => {
+                async.waterfall([
+                    callback => s3.putObject({ Bucket: bucket, Key: key },
+                        err => callback(err)),
+                    callback => utils.assertOneNullVersion(callback),
+                    callback => utils.putObjectAcl({
+                        Bucket: bucket,
+                        Key: key,
+                        ACL: 'public-read-write',
+                        VersionId: 'null',
+                    }, err => callback(err)),
+                    // in case putting acl created extra version in MD,
+                    // we would not see it in s3 listing if the version id
+                    // is the same as the master version id. putting another
+                    // null version replaces master version id.
+                    callback => s3.putObject({ Bucket: bucket, Key: key },
+                        err => callback(err)),
+                    callback => utils.assertOneNullVersion(callback),
+                ], done);
+            });
+
+            it('non-version-specific put acl with null version as master + ' +
+            'separate version should update both versions in metadata',
+            done => {
+                async.waterfall([
+                    callback => createDualNullVersion(bucket,
+                        key, callback),
+                    callback => utils.putObjectAcl({
+                        Bucket: bucket,
+                        Key: key,
+                        ACL: 'public-read-write',
+                        VersionId: 'null',
+                    }, err => callback(err)),
+                    // getting acl of the master version should return
+                    // updated acl
+                    callback => s3.getObjectAcl({ Bucket: bucket, Key: key },
+                        (err, data) => {
+                            _Utils.assertNoError(err,
+                                'getting acl of latest version');
+                            assert.strictEqual(data.Grants.length, 3);
+                            callback();
+                        }),
+                    callback => _assertNullVersionAcl(3, callback),
+                    // stores master as null version before putting new version
+                    callback => enableVersioningThenPutObject(bucket, key,
+                        err => callback(err)),
+                    callback => _assertNullVersionAcl(3, callback),
+                    // should have one new version, one null version
+                    callback => s3.listObjectVersions({ Bucket: bucket },
+                        (err, data) => {
+                            assert.strictEqual(err, null);
+                            assert.strictEqual(data.Versions.length, 2);
+                            callback();
+                        }),
+                ], done);
             });
         });
 

@@ -24,6 +24,18 @@ describe('Put object tagging with versioning', () => {
     withV4(sigCfg => {
         const bucketUtil = new BucketUtility('default', sigCfg);
         const s3 = bucketUtil.s3;
+
+        function _assertOneNullVersion(callback) {
+            return s3.listObjectVersions({ Bucket: bucketName },
+                (err, data) => {
+                    assert.strictEqual(err, null);
+                    assert.strictEqual(data.Versions.length, 1);
+                    assert.strictEqual(data.Versions[0].VersionId,
+                        'null');
+                    callback();
+                });
+        }
+
         beforeEach(done => s3.createBucket({ Bucket: bucketName }, done));
         afterEach(done => {
             removeAllVersions({ Bucket: bucketName }, err => {
@@ -107,6 +119,32 @@ describe('Put object tagging with versioning', () => {
                 assert.strictEqual(data.VersionId, 'null');
                 done();
             });
+        });
+
+        it('putting tag with a version of id "null" should not create ' +
+        'extra null version if master version is null', done => {
+            async.waterfall([
+                next => s3.putObject({ Bucket: bucketName, Key: objectName },
+                err => next(err)),
+                next => _assertOneNullVersion(next),
+                next => s3.putObjectTagging({
+                    Bucket: bucketName,
+                    Key: objectName,
+                    VersionId: 'null',
+                    Tagging: { TagSet: [
+                        {
+                            Key: 'key1',
+                            Value: 'value1',
+                        }] },
+                }, (err, data) => next(err, data)),
+                // in case putting tagging created extra version in metadata,
+                // we would not see it in s3 listing if the version id is the
+                // same as the master version id. putting another null version
+                // replaces master version id.
+                next => s3.putObject({ Bucket: bucketName, Key: objectName },
+                err => next(err)),
+                next => _assertOneNullVersion(next),
+            ], done);
         });
 
         it('should return InvalidArgument putting tag with a non existing ' +
