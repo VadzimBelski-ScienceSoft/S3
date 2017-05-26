@@ -6,9 +6,6 @@ Getting Started
 
 |CircleCI| |Scality CI|
 
-Learn more at `s3.scality.com <http://s3.scality.com>`__
---------------------------------------------------------
-
 Contributing
 ------------
 
