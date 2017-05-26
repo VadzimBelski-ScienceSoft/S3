@@ -10,7 +10,6 @@ Scality S3 Server
    GETTING_STARTED
    CLIENTS
    DOCKER
-   DUPLICITY
    SSL
    HA
    S3FS
