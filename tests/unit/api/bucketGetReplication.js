@@ -25,11 +25,11 @@ function checkXML(parsedXML, config) {
     }
 }
 
-// Get the replication XML and check that values are as expected.
+// Get the replication XML, parse it, and check that values are as expected.
 function getAndCheckXML(bucketReplicationConfig, cb) {
     const log = new DummyRequestLogger();
     const xml = getReplicationConfigurationXML(bucketReplicationConfig, log);
-    parseString(xml, (err, res) => {
+    return parseString(xml, (err, res) => {
         if (err) {
             return cb(err);
         }
@@ -38,9 +38,9 @@ function getAndCheckXML(bucketReplicationConfig, cb) {
     });
 }
 
-// Create replication configuration XML with a tag optionally omitted.
+// Get an example bucket replication configuration.
 function getReplicationConfig() {
-    const bucketReplicationConfiguration = {
+    return {
         role: 'arn:partition:service::account-id:resourcetype/resource',
         destination: 'destination-bucket',
         rules: [
@@ -52,14 +52,11 @@ function getReplicationConfig() {
             },
         ],
     };
-    return bucketReplicationConfiguration;
 }
 
 describe("'getReplicationConfigurationXML' function", () => {
-    it('should return XML from the bucket replication configuration', done => {
-        const config = getReplicationConfig();
-        return getAndCheckXML(config, done);
-    });
+    it('should return XML from the bucket replication configuration', done =>
+        getAndCheckXML(getReplicationConfig(), done));
 
     it('should not return XML with StorageClass tag if `storageClass` ' +
     'property is omitted', done => {
