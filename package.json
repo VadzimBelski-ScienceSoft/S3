@@ -19,7 +19,7 @@
   },
   "homepage": "https://github.com/scality/S3#readme",
   "dependencies": {
-    "arsenal": "scality/Arsenal",
+    "arsenal": "scality/Arsenal#S3C-291-get-bucket-replication",
     "async": "~1.4.2",
     "bucketclient": "scality/bucketclient",
     "commander": "^2.9.0",
