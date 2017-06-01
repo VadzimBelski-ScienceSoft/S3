@@ -19,7 +19,7 @@
   },
   "homepage": "https://github.com/scality/S3#readme",
   "dependencies": {
-    "arsenal": "../Arsenal",
+    "arsenal": "scality/Arsenal",
     "async": "~1.4.2",
     "babel-core": "^6.5.2",
     "babel-plugin-transform-es2015-destructuring": "^6.5.2",
@@ -40,7 +40,7 @@
     "werelogs": "scality/werelogs",
     "xml2js": "~0.4.16",
     "xml": "~1.0.0",
-    "cdmiclient": "../cdmiclient"
+    "cdmiclient": "scality/cdmiclient#test/cdmi-s3"
   },
   "optionalDependencies": {
     "ioctl": "2.0.0"
