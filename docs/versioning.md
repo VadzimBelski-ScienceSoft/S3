@@ -1,15 +1,19 @@
 # Versioning
 
-This document describes S3 Server's support for the specific AWS S3 Bucket
-Versioning feature.
+This document describes S3 Server's support for the AWS S3 Bucket Versioning
+feature.
 
 ## AWS S3 Bucket Versioning
 
-See AWS documentation on Versioning for a description of the Bucket Versioning
-feature:
+See AWS documentation for a description of the Bucket Versioning feature:
 
-[Bucket Versioning](http://docs.aws.amazon.com/AmazonS3/latest/dev/Versioning.html)  
-[Object Versioning](http://docs.aws.amazon.com/AmazonS3/latest/dev/ObjectVersioning.html)  
+- [Bucket
+   Versioning](http://docs.aws.amazon.com/AmazonS3/latest/dev/Versioning.html)
+- [Object Versioning
+  ](http://docs.aws.amazon.com/AmazonS3/latest/dev/ObjectVersioning.html)
+
+This document assumes familiarity with the details of Bucket Versioning,
+including null versions and delete markers, described in the above links.
 
 ## Implementation of Bucket Versioning in S3
 
@@ -37,11 +41,13 @@ The role of the S3 API can be broken down into the following:
   version IDs sent in requests
 
 The implementation of Bucket Versioning in S3 is described in this document in
-two main parts. The first section, "Implementation of Bucket Versioning in
-Metadata" describes the way versions are stored in metadata, and the metadata
-options for manipulating version metadata.
+two main parts. The first section, ["Implementation of Bucket Versioning in
+Metadata"](#implementation-of-bucket-versioning-in-metadata), describes the way
+versions are stored in metadata, and the metadata options for manipulating
+version metadata.
 
-The second section, "Implementation of Bucket Versioning in API" describes the
+The second section, ["Implementation of Bucket Versioning in
+API"](#implementation-of-bucket-versioning-in-api), describes the
 way the metadata options are used in the API within S3 actions to create new
 versions, update their metadata, and delete them. The management of null
 versions and creation of delete markers are also described in this section.
@@ -50,8 +56,8 @@ versions and creation of delete markers are also described in this section.
 
 As mentioned above, each version of an object is stored as a separate key in
 metadata. We use version identifiers as the suffix for the keys of the object
-versions, and a special version (the "Master Version") to represent the latest
-version.
+versions, and a special version (the ["Master Version"](#master-version)) to
+represent the latest version.
 
 An example of what the metadata keys might look like for an object `foo/bar`
 with three versions:
@@ -64,9 +70,8 @@ with three versions:
 | foo/bar\098506163554373999998PARIS  0.f9b82c166f695 |
 
 The most recent version created is represented above in the key `foo/bar` and is
-the master version. This special version is described further in the subsection
-"Master Version". The subsection that immediately follows describes the metadata
-key and version ID format in further detail.
+the master version. This special version is described further in the section
+["Master Version"](#master-version)).
 
 ### Version ID and Metadata Key Format
 
@@ -82,7 +87,7 @@ where:
 - `ts`: is the combination of epoch and an increasing number
 - `rep_group_id`: is the name of deployment(s) considered one unit used for
    replication
-- `seq_id`: is supposed to be a unique value based on metadata information.
+- `seq_id`: is a unique value based on metadata information.
 
 The format of a key in metadata for a version is:
 
@@ -105,7 +110,7 @@ during the epoch `1234567890` in the replication group `PARIS` with
 
 We store a copy of the latest version of an object's metadata using
 `object_name` as the key; this version is called the master version. The master
-versions of each object facilitates the standard GET operation, which would
+version of each object facilitates the standard GET operation, which would
 otherwise need to scan among the list of versions of an object for its latest
 version.
 
@@ -128,8 +133,8 @@ to list object versions.
 
 These only describe the basic CRUD operations that the metadata engine can
 handle. How these options are used by the S3 API to generate and update versions
-involves more steps and is described more comprehensively in "Implementation of
-Bucket Versioning in API" and its subsections.
+is described more comprehensively in ["Implementation of Bucket Versioning in
+API"](#implementation-of-bucket-versioning-in-api).
 
 Note: all operations (PUT and DELETE) that generate a new version of an object
 will return the `version_id` of the new version to the API.
@@ -144,30 +149,33 @@ will return the `version_id` of the new version to the API.
   - if the version identified by `versionId` happens to be the latest version,
     the master version will be updated as well
   - note that with `versionId` set to an empty string `''`, it will overwrite
-    the master version only (same as no options, but returns a version ID).
-    This is used for creating null versions, which are discussed further in
-    "Null Version Management."
+    the master version only (same as no options, but the master version will
+    have a `versionId` property set in its metadata like any other version).
+    The `versionId` will never be exposed to an external user, but setting this
+    internal-only `versionID` enables S3 to find this version later if it is no
+    longer the master. This option of `versionId` set to `''` is used for
+    creating null versions once versioning has been suspended, which is
+    discussed in ["Null Version Management"](#null-version-management).
 
 Only one option is used at a time. `versionId: <versionId>` does not have to be
 used with `versioning: true` set to work, nor should they both be set. If both
-are used at once, the metadata engine will not perform any action.
+are used at once, the metadata engine will return an error.
 
 To summarize the valid combinations of versioning options:
 
-- !versioning && !versionId: normal non-versioning put
+- !versioning && !versionId: normal non-versioning PUT
 - versioning && !versionId: create a new version, update the master version
 - !versioning && versionId: update (PUT/DELETE) an existing version
   - if versionId === '' update master version
 
-Other cases are invalid and metadata does nothing.
+Other cases are invalid and the metadata engine returns the error `BadRequest`.
 
 #### DELETE
 
 - no options: original DELETE operation, will delete the master version
 - `versionId: <versionId>` delete a specific version
 
-Deleting a specific version in metadata involves a few steps. A deletion
-targeting the latest version of an object has to:
+A deletion targeting the latest version of an object has to:
 
 - delete the specified version identified by `versionId`
 - replace the master version with a version that is a placeholder for deletion
@@ -175,14 +183,14 @@ targeting the latest version of an object has to:
   version was deleted and needs to be updated
 - initiate a repair operation to update the value of the master version:
   - involves listing the versions of the object and get the latest
-  version to replace the place holder delete version
-  - if no more versions exists, metadata deletes the master version, removing
+  version to replace the placeholder delete version
+  - if no more versions exist, metadata deletes the master version, removing
     the key from metadata
 
 Note: all of this happens before responding to S3, and only when the metadata
 engine is instructed by S3 to delete a specific version or the master version.
-See section "Delete Markers" for a description of what happens when a Delete
-Object request is sent to the S3 API.
+See section ["Delete Markers"](#delete-markers) for a description of what
+happens when a Delete Object request is sent to the S3 API.
 
 #### GET
 
@@ -197,15 +205,14 @@ identified by the key for that version.
 #### LIST
 
 For a standard LIST on a bucket, metadata iterates through the keys by using
-the separator represented by `.` as an extra delimiter. For a listing of all
-versions of a bucket, there is no change compared to the original listing
-function. Instead, the API component returns all the keys in a List Objects call
-and filters for just the keys of the master versions in a List Object Versions
-call.
+the separator (`\0`, represented by `.` in examples) as an extra delimiter.
+For a listing of all versions of a bucket, there is no change compared to the
+original listing function. Instead, the API component returns all the keys in a
+List Objects call and filters for just the keys of the master versions in a List
+Object Versions call.
 
 For example, a standard LIST operation against the keys in a table below would
-return from metadata the list of `[ foo/bar, bar, qux/quz, quz ]` using the
-separator represented by `.` as the extra delimiter.
+return from metadata the list of `[ foo/bar, bar, qux/quz, quz ]`.
 
 | key |
 |-----|
@@ -350,24 +357,27 @@ existing null master version.
 
 The null version's `versionId` attribute may be undefined because it was
 generated before the bucket versioning was configured. In that case, a version
-ID is generated using the max timestamp and sequence values possible so that the
+ID is generated using the max epoch and sequence values possible so that the
 null version will be properly ordered as the last entry in a metadata listing.
 This value ("non-versioned object id") is used in the PUT call with the
 `versionId` option.
 
 ##### Case 3: Overwriting a Null Version That is Not Latest Version
 
-Note that in the case versioning is suspended and there is a null version is not
-the latest version, S3 cannot rely on the `versionId: ''` option during a PUT to
-metadata to overwrite the existing null version when creating a new null
-version. Instead, the S3 API must send a separate DELETE call to metadata which
-specifies the version id of the current null version for delete before creating
-a new null version.
+Normally when versioning is suspended, S3 uses the `versionId: ''` option in
+a PUT to metadata to create a null version. This also overwrites an existing
+null version if it is the master version.
+
+However, if there is a null version that is not the latest version, S3 cannot
+rely on the `versionId: ''` option will not overwrite the existing null version.
+Instead, before creating a new null version, the S3 API must send a separate
+DELETE call to metadata specifying the version id of the current null version
+for delete.
 
 To do this, when storing a null version (3A above) before storing a new non-null
-version, S3 records the version ID returned by metadata in the `nullVersionId`
-attribute of the non-null version. For steps 3A and 3B above, these are the
-values stored in the `nullVersionId` of each version's metadata:
+version, S3 records the version's ID in the `nullVersionId` attribute of the
+non-null version. For steps 3A and 3B above, these are the values stored in the
+`nullVersionId` of each version's metadata:
 
 (3A) PUT foo, versioning: `true`
 
@@ -406,12 +416,12 @@ Then the master version is overwritten with the new null version:
 
 The `nullVersionId` attribute is also used to retrieve the correct version when
 the version ID "null" is specified in certain object-level APIs, described
-further in the section "Null Version Mapping".
+further in the section ["Null Version Mapping"](#null-version-mapping).
 
 #### Specifying Versions in APIs for Putting Versions
 
-Since S3 does not currently allow overwrite of existing version data, Put
-Object, Complete Multipart Upload and Copy Object return `400 InvalidArgument`
+Since S3 does not allow an overwrite of existing version data, Put Object,
+Complete Multipart Upload and Copy Object return `400 InvalidArgument`
 if a specific version ID is specified in the request query, e.g. for a
 `PUT /foo?versionId=v1` request.
 
@@ -434,7 +444,7 @@ If versioning is enabled and there is existing object metadata:
     (put before versioning was configured):
     - store the null version metadata as a new version
     - create a new version and overwrite the master version
-        - set `nullVersionId`: version ID returned when storing null version
+        - set `nullVersionId`: version ID of the null version that was stored
 
 If versioning is enabled and the master version is not null;
 or there is no existing object metadata:
@@ -495,7 +505,7 @@ a specific version ID is provided in the request query, e.g.
 `DELETE /foo?versionId=v1`.
 
 If no version ID is provided, S3 creates a delete marker by creating a 0-byte
-version with the metadata attribute `isDeleteMarker: true`.The S3 API will
+version with the metadata attribute `isDeleteMarker: true`. The S3 API will
 return a `404 NoSuchKey` error in response to requests getting or heading an
 object whose latest version is a delete maker.
 
@@ -514,7 +524,7 @@ These APIs respond to requests specifying the version ID of a delete marker
 with the error `405 MethodNotAllowed`, in general. Copy Part and Copy Object
 respond with `400 Invalid Request`.
 
-See section "Delete Example" for a summary.
+See section ["Delete Example"](#delete-example) for a summary.
 
 #### Null Version Mapping
 
