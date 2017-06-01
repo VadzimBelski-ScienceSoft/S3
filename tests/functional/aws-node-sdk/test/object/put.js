@@ -85,6 +85,28 @@ describe('PUT object', () => {
                 });
             });
 
+        it('should return error if putting object w/ > 2KB user-defined md',
+            done => {
+                const metadata = {};
+                const counter = 8;
+                // 256 * 8 = 2048 (2 KB)
+                for (let i = 0; i < counter; i++) {
+                    const key = `header${i}`;
+                    const valueLength =
+                        256 - ('x-amz-meta-'.length + key.length);
+                    metadata[key] = '0'.repeat(valueLength);
+                }
+                // for some reason AWS tolerates up to 88 more bytes
+                metadata.header0 = `${metadata.header0}${'0'.repeat(89)}`;
+                const params = { Bucket: bucket, Key: '/', Metadata: metadata };
+                s3.putObject(params, err => {
+                    assert(err, 'Expected err but did not find one');
+                    assert.strictEqual(err.code, 'MetadataTooLarge');
+                    assert.strictEqual(err.statusCode, 400);
+                    done();
+                });
+            });
+
         it('should return Not Implemented error for obj. encryption using ' +
             'AWS-managed encryption keys', done => {
             const params = { Bucket: bucket, Key: 'key',
