@@ -4,6 +4,8 @@ const withV4 = require('../support/withV4');
 const BucketUtility = require('../../lib/utility/bucket-util');
 const provideRawOutput = require('../../lib/utility/provideRawOutput');
 const { taggingTests } = require('../../lib/utility/tagging');
+const genMaxSizeMetaHeaders
+    = require('../../lib/utility/genMaxSizeMetaHeaders');
 
 const bucket = 'bucket2putstuffin4324242';
 const object = 'object2putstuffin';
@@ -87,23 +89,18 @@ describe('PUT object', () => {
 
         it('should return error if putting object w/ > 2KB user-defined md',
             done => {
-                const metadata = {};
-                const counter = 8;
-                // 256 * 8 = 2048 (2 KB)
-                for (let i = 0; i < counter; i++) {
-                    const key = `header${i}`;
-                    const valueLength =
-                        256 - ('x-amz-meta-'.length + key.length);
-                    metadata[key] = '0'.repeat(valueLength);
-                }
-                // for some reason AWS tolerates up to 88 more bytes
-                metadata.header0 = `${metadata.header0}${'0'.repeat(89)}`;
+                const metadata = genMaxSizeMetaHeaders();
                 const params = { Bucket: bucket, Key: '/', Metadata: metadata };
                 s3.putObject(params, err => {
-                    assert(err, 'Expected err but did not find one');
-                    assert.strictEqual(err.code, 'MetadataTooLarge');
-                    assert.strictEqual(err.statusCode, 400);
-                    done();
+                    assert.strictEqual(err, null, `Unexpected err: ${err}`);
+                    // add one more byte to be over the limit
+                    metadata.header0 = `${metadata.header0}${'0'}`;
+                    s3.putObject(params, err => {
+                        assert(err, 'Expected err but did not find one');
+                        assert.strictEqual(err.code, 'MetadataTooLarge');
+                        assert.strictEqual(err.statusCode, 400);
+                        done();
+                    });
                 });
             });
 

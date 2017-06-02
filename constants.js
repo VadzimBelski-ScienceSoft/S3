@@ -68,6 +68,8 @@ const constants = {
     maximumAllowedPartSize: process.env.MPU_TESTING === 'yes' ? 104857600 :
         5368709120,
 
+    maximumMetaHeadersSize: 2136,
+
     // hex digest of sha256 hash of empty string:
     emptyStringHash: crypto.createHash('sha256')
         .update('', 'binary').digest('hex'),
